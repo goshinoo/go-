@@ -1477,3 +1477,280 @@ daa108185bb267abbafe45291da4b2a1c5a44e40 172.38.0.11:6379@16379 myself,master - 
 ```
 
 部署成功!
+
+
+
+## Docker Compose
+
+### 简介
+
+定义和运行多个容器
+
+使用YAML文件
+
+三步骤:
+
+1. 定义Dockerfile,让它能在任何环境运行
+2. 定义docker-compose.yml去执行你的程序,让他们能在一个隔离的环境中运行
+3. 启动项目 `docker-compose up`
+
+作用:批量容器编排
+
+重要的概念:
+
+1. 服务services 容器,应用
+2. 项目project 一组关联的容器
+
+模板
+
+```yaml
+version: "3.9"  # optional since v1.27.0
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+    volumes:
+      - .:/code
+      - logvolume01:/var/log
+    links:
+      - redis
+  redis:
+    image: redis
+volumes:
+  logvolume01: {}
+```
+
+### linux安装
+
+```shell
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+
+
+### 体验
+
+```shell
+ mkdir composetest
+ cd composetest
+ 
+#创建app.py文件
+import time
+
+import redis
+from flask import Flask
+
+app = Flask(__name__)
+cache = redis.Redis(host='redis', port=6379)
+
+def get_hit_count():
+    retries = 5
+    while True:
+        try:
+            return cache.incr('hits')
+        except redis.exceptions.ConnectionError as exc:
+            if retries == 0:
+                raise exc
+            retries -= 1
+            time.sleep(0.5)
+
+@app.route('/')
+def hello():
+    count = get_hit_count()
+    return 'Hello World! I have been seen {} times.\n'.format(count)
+    
+#创建requirements.txt
+flask
+redis
+
+#创建Dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.7-alpine
+WORKDIR /code
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+RUN apk add --no-cache gcc musl-dev linux-headers
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+EXPOSE 5000
+COPY . .
+CMD ["flask", "run"]
+
+#创建docker-compose.yml
+version: "3.9"
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+  redis:
+    image: "redis:alpine"
+    
+#运行
+#docker-compose build(可选)
+docker-compose up
+
+http://localhost:8000/
+```
+
+![image-20220215163051480](picture\image-20220215163051480.png)
+
+![image-20220215163206908](picture\image-20220215163206908.png)
+
+默认服务名
+
+文件名\_服务名_num
+
+
+
+docker-copose会自动创建一个网络
+
+![image-20220215163337953](picture\image-20220215163337953.png)
+
+![image-20220215163506059](picture\image-20220215163506059.png)
+
+
+
+**Docker小结:**
+
+1. Docker镜像  run => 容器
+2. Dockerfile构建镜像(服务打包)
+3. docker-compose启动项目(编排,多个微服务环境)
+4. Docker网络
+
+
+
+### 规则
+
+```yaml
+#3层
+
+version: '' #版本,和docker版本号相关
+services: #服务
+	服务1:
+		build: #配置
+		depends_on: #规定先启动的服务
+	服务2:
+	服务3:
+	...
+```
+
+官网查找命令详细用法:
+
+https://docs.docker.com/compose/
+
+
+
+### 开源项目
+
+```shell
+cd my_wordpress/
+
+#docker-compose.yml
+version: "3.9"
+    
+services:
+  db:
+    image: mysql:5.7
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: somewordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    volumes:
+      - wordpress_data:/var/www/html
+    ports:
+      - "8000:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+volumes:
+  db_data: {}
+  wordpress_data: {}
+  
+  
+  
+docker-compose up -d #后台启动
+```
+
+
+
+## Docker Swarm
+
+### 购买服务器
+
+### 搭建
+
+生成主节点init
+
+加入(管理者,worker)
+
+### Raft协议
+
+保证大多数节点存活才可以用,集群至少大于3台
+
+少于3台就无法运行
+
+worker节点无法使用管理命令
+
+大于1台管理节点存活
+
+### 操作
+
+```shell
+#集群中创建一个nginx服务
+docker service create -p 8888:80 --name my-nginx nginx
+
+#动态扩缩容
+#生成3个nginx,随时调整数量
+docker service update --replicas 3 my-nginx
+
+#移除服务
+docker service rm my-nginx
+```
+
+
+
+命令 -> 管理 -> api -> 调度 -> 工作节点(创建Task容器维护创建)
+
+
+
+## Docker Stack
+
+集群部署
+
+```shell
+#单机
+docker-compose up -d wordpress.yml
+#集群
+docker stack deploy wordpress.yml
+```
+
+
+
+## Docker Secret
+
+
+
+## Docker Config
+
+
+
+## 扩展到K8S
+
+### 云原生
+
