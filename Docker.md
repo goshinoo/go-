@@ -1105,7 +1105,7 @@ The push refers to repository [docker.io/goshino/tomcat]
 
 使用ip addr查看网卡
 
-![image-20220214190329129](C:\Users\admin\AppData\Roaming\Typora\typora-user-images\image-20220214190329129.png)
+![image-20220214190329129](picture\image-20220214190329129.png)
 
 docker如何处理容器网络访问的?
 
